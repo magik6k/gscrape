@@ -467,6 +467,28 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
             color: #888;
             font-size: 12px;
         }
+        .children-toolbar {
+            padding: 8px 10px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #444;
+            display: none;
+        }
+        .children-search {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 12px;
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        .children-search:focus {
+            outline: none;
+            border-color: #0e639c;
+        }
+        .children-search::placeholder {
+            color: #888;
+        }
         .children-list {
             flex: 1;
             min-height: 250px;
@@ -605,6 +627,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
             <div class="children-header" onclick="toggleChildren()">
                 <h4>Children Goroutines (<span id="childrenCount">0</span>)</h4>
                 <span class="children-toggle" id="childrenToggle">▼ Show</span>
+            </div>
+            <div class="children-toolbar" id="childrenToolbar">
+                <input type="text" class="children-search" id="childrenSearch" placeholder="Filter by function name..." oninput="filterChildren()">
             </div>
             <div class="children-list" id="childrenList" style="display:none"></div>
         </div>
@@ -882,9 +907,11 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
             });
             list.innerHTML = html;
 
-            // Reset visibility state
+            // Reset visibility and search state
             childrenVisible = false;
             document.getElementById('childrenToggle').textContent = '▼ Show';
+            document.getElementById('childrenToolbar').style.display = 'none';
+            document.getElementById('childrenSearch').value = '';
             list.style.display = 'none';
 
             // Render the mini chart showing active children over time
@@ -894,7 +921,33 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
         function toggleChildren() {
             childrenVisible = !childrenVisible;
             document.getElementById('childrenList').style.display = childrenVisible ? 'block' : 'none';
+            document.getElementById('childrenToolbar').style.display = childrenVisible ? 'block' : 'none';
             document.getElementById('childrenToggle').textContent = childrenVisible ? '▲ Hide' : '▼ Show';
+            if (childrenVisible) {
+                document.getElementById('childrenSearch').focus();
+            }
+        }
+
+        function filterChildren() {
+            const query = document.getElementById('childrenSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.child-item');
+            let visibleCount = 0;
+            
+            items.forEach(item => {
+                const funcs = item.querySelector('.child-funcs').textContent.toLowerCase();
+                const id = item.querySelector('.child-id').textContent.toLowerCase();
+                const matches = funcs.includes(query) || id.includes(query);
+                item.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+            
+            // Update count to show filtered/total
+            const countSpan = document.getElementById('childrenCount');
+            if (query) {
+                countSpan.textContent = visibleCount + '/' + childrenData.length;
+            } else {
+                countSpan.textContent = childrenData.length;
+            }
         }
 
         function goToChild(childId) {
